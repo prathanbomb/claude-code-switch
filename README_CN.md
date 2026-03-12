@@ -161,20 +161,25 @@ ccc                    # 显示 ccc 用法（无参数）
 | | | china | `coding.dashscope.aliyuncs.com/apps/anthropic` |
 | MiniMax | `ccm minimax [global\|china]` | global（默认） | `api.minimax.io/anthropic` |
 | | | china | `api.minimaxi.com/anthropic` |
-| 豆包/Seed | `ccm seed [variant]` | - | `ark.cn-beijing.volces.com/api/coding` |
+| 豆包/Seed | `ccm seed [global\|china] [variant]` | global | `ark.ap-southeast.bytepluses.com/api/coding` |
+| | | china（默认） | `ark.cn-beijing.volces.com/api/coding` |
 | Claude | `ccm claude` | - | `api.anthropic.com` |
 
 > **GLM Coding 套餐**：[bigmodel.cn/glm-coding](https://www.bigmodel.cn/glm-coding?ic=5XMIOZPPXB)
 >
 > **豆包 Coding Plan**：[volcengine.com](https://volcengine.com/L/rLv5d5OWXgg/)（邀请码：`ZP5PZMEY`）
 
-### Seed 变体
+### Seed 区域与变体
 ```bash
-ccm seed              # ark-code-latest（默认）
-ccm seed doubao       # doubao-seed-code
-ccm seed glm          # glm-5
-ccm seed deepseek     # deepseek-v3.2
-ccm seed kimi         # kimi-k2.5
+# 区域
+ccm seed              # china（默认）
+ccm seed global       # 海外区域
+ccm seed china        # 国内区域
+
+# 区域 + 变体
+ccm seed global kimi     # 海外 + kimi-k2.5
+ccm seed china deepseek  # 国内 + deepseek-v3.2
+ccm seed glm             # 国内（默认）+ glm-5
 ```
 
 ### OpenRouter
