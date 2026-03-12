@@ -473,7 +473,7 @@ project_write_settings() {
     local region="${2:-global}"
 
     # Normalize region if needed
-    if [[ "$provider" =~ ^(glm|kimi|qwen|minimax)$ ]]; then
+    if [[ "$provider" =~ ^(glm|kimi|qwen|minimax|seed)$ ]]; then
         local normalized_region
         if ! normalized_region="$(normalize_region "$region")"; then
             echo -e "${RED}❌ Invalid region: $region${NC}" >&2
@@ -547,12 +547,13 @@ project_show_usage() {
     echo "  kimi [global|china]   - Kimi" >&2
     echo "  qwen [global|china]   - Qwen" >&2
     echo "  minimax [global|china] - MiniMax" >&2
-    echo "  seed                  - Doubao/Seed" >&2
+    echo "  seed [global|china]   - Doubao/Seed" >&2
     echo "  claude                - Claude (official)" >&2
     echo "" >&2
     echo "Examples:" >&2
     echo "  ccm project glm global   # Use GLM for this project" >&2
-    echo "  ccm project seed         # Use Seed for this project" >&2
+    echo "  ccm project seed china   # Use Seed (china) for this project" >&2
+    echo "  ccm project seed global  # Use Seed (global) for this project" >&2
     echo "  ccm project reset        # Remove project override" >&2
 }
 
@@ -651,7 +652,10 @@ get_provider_config() {
             fi
             config_token_var="ARK_API_KEY"
             config_model="${SEED_MODEL:-ark-code-latest}"
-            config_base_url="https://ark.cn-beijing.volces.com/api/coding"
+            case "$region" in
+                "global") config_base_url="https://ark.ap-southeast.bytepluses.com/api/coding" ;;
+                "china") config_base_url="https://ark.cn-beijing.volces.com/api/coding" ;;
+            esac
             ;;
         "stepfun")
             if ! is_effectively_set "$STEPFUN_API_KEY"; then
@@ -681,7 +685,7 @@ user_write_settings() {
     local region="${2:-global}"
 
     # Normalize region if needed
-    if [[ "$provider" =~ ^(glm|kimi|qwen|minimax)$ ]]; then
+    if [[ "$provider" =~ ^(glm|kimi|qwen|minimax|seed)$ ]]; then
         local normalized_region
         if ! normalized_region="$(normalize_region "$region")"; then
             echo -e "${RED}❌ Invalid region: $region${NC}" >&2
@@ -844,7 +848,7 @@ user_show_usage() {
     echo "  kimi [global|china]   - Kimi" >&2
     echo "  qwen [global|china]   - Qwen" >&2
     echo "  minimax [global|china] - MiniMax" >&2
-    echo "  seed                  - Doubao/Seed" >&2
+    echo "  seed [global|china]   - Doubao/Seed" >&2
     echo "  claude                - Claude (official)" >&2
     echo "" >&2
     echo "Examples:" >&2
@@ -1714,15 +1718,32 @@ switch_to_qwen() {
 
 # 切换到豆包 Seed-Code (Doubao)
 switch_to_seed() {
-    local variant="${1:-}"
-    echo -e "${YELLOW}🔄 $(t 'switching_to') 豆包 Seed-Code $(t 'model')...${NC}"
+    local region_input="${1:-china}"
+    local variant="${2:-}"
+    local region
+    if ! region="$(normalize_region "$region_input")"; then
+        echo -e "${RED}❌ $(t 'unknown_option'): $region_input${NC}"
+        echo -e "${YELLOW}💡 Usage: ccm seed [global|china] [variant]${NC}"
+        return 1
+    fi
+    echo -e "${YELLOW}🔄 $(t 'switching_to') 豆包 Seed-Code (${region}) $(t 'model')...${NC}"
     clean_env
     if ! is_effectively_set "$ARK_API_KEY"; then
         echo -e "${RED}❌ Please configure ARK_API_KEY${NC}"
         return 1
     fi
-    # 官方豆包 Seed-Code
-    export ANTHROPIC_BASE_URL="https://ark.cn-beijing.volces.com/api/coding"
+
+    local base_url=""
+    case "$region" in
+        "global")
+            base_url="https://ark.ap-southeast.bytepluses.com/api/coding"
+            ;;
+        "china")
+            base_url="https://ark.cn-beijing.volces.com/api/coding"
+            ;;
+    esac
+
+    export ANTHROPIC_BASE_URL="$base_url"
     export ANTHROPIC_AUTH_TOKEN="$ARK_API_KEY"
 
     local seed_model=""
@@ -1743,8 +1764,8 @@ switch_to_seed() {
             seed_model="kimi-k2.5"
             ;;
         *)
-            echo -e "${RED}❌ $(t 'unknown_option'): seed $variant${NC}"
-            echo -e "${YELLOW}💡 Usage: ccm seed [doubao|glm|deepseek|kimi]${NC}"
+            echo -e "${RED}❌ $(t 'unknown_option'): seed variant $variant${NC}"
+            echo -e "${YELLOW}💡 Usage: ccm seed [global|china] [doubao|glm|deepseek|kimi]${NC}"
             return 1
             ;;
     esac
@@ -1753,7 +1774,7 @@ switch_to_seed() {
     export ANTHROPIC_DEFAULT_OPUS_MODEL="$seed_model"
     export ANTHROPIC_DEFAULT_HAIKU_MODEL="$seed_model"
     export CLAUDE_CODE_SUBAGENT_MODEL="$ANTHROPIC_MODEL"
-    echo -e "${GREEN}✅ $(t 'switched_to') Seed-Code（$(t 'official')）${NC}"
+    echo -e "${GREEN}✅ $(t 'switched_to') Seed-Code (${region})（$(t 'official')）${NC}"
     echo "   BASE_URL: $ANTHROPIC_BASE_URL"
     echo "   MODEL: $ANTHROPIC_MODEL"
 }
@@ -1770,7 +1791,7 @@ show_help() {
     echo "  qwen [global|china]     - env qwen (default: global)"
     echo "  glm [global|china]      - env glm (default: global)"
     echo "  minimax [global|china]  - env minimax (default: global)"
-    echo "  seed [doubao|glm|deepseek|kimi] - env 豆包 Seed-Code"
+    echo "  seed [global|china] [variant] - env 豆包 Seed-Code"
     echo "  stepfun                 - env StepFun"
     echo "  claude, sonnet, s       - env claude (official)"
     echo "  open <provider>         - env OpenRouter (run 'ccm open' for help)"
@@ -1804,7 +1825,7 @@ show_help() {
     echo "  eval \"\$(ccm deepseek)\"                   # Apply in current shell (recommended)"
     echo "  eval \"\$(ccm kimi china)\"              # Kimi CN"
     echo "  eval \"\$(ccm qwen global)\"             # Qwen global (Coding Plan)"
-    echo "  eval \"\$(ccm seed kimi)\"               # 豆包 Seed-Code (kimi)"
+    echo "  eval \"\$(ccm seed china kimi)\"         # 豆包 Seed-Code (kimi variant)"
     echo "  eval \"\$(ccm open kimi)\"               # OpenRouter kimi"
     echo ""
     echo "  ccm user glm global    # Set GLM as default (highest priority)"
@@ -2064,6 +2085,7 @@ emit_openrouter_exports() {
 emit_env_exports() {
     local target="$1"
     local arg="${2:-}"
+    local arg2="${3:-}"
     # 加载配置以便进行存在性判断（环境变量优先，不打印密钥）
     load_config || return 1
 
@@ -2213,7 +2235,15 @@ emit_env_exports() {
                 echo -e "${RED}❌ Please configure ARK_API_KEY${NC}" >&2
                 return 1
             fi
-            local seed_variant="$arg"
+            # First arg is region, second arg is variant
+            local seed_region_input="${arg:-china}"
+            local seed_region
+            if ! seed_region="$(normalize_region "$seed_region_input")"; then
+                echo -e "${RED}❌ $(t 'unknown_option'): $seed_region_input${NC}" >&2
+                echo -e "${YELLOW}💡 Usage: ccm seed [global|china] [variant]${NC}" >&2
+                return 1
+            fi
+            local seed_variant="$arg2"
             local seed_model=""
             case "$seed_variant" in
                 ""|"default")
@@ -2232,13 +2262,22 @@ emit_env_exports() {
                     seed_model="kimi-k2.5"
                     ;;
                 *)
-                    echo -e "${RED}❌ $(t 'unknown_option'): seed $seed_variant${NC}" >&2
-                    echo -e "${YELLOW}💡 Usage: ccm seed [doubao|glm|deepseek|kimi]${NC}" >&2
+                    echo -e "${RED}❌ $(t 'unknown_option'): seed variant $seed_variant${NC}" >&2
+                    echo -e "${YELLOW}💡 Usage: ccm seed [global|china] [doubao|glm|deepseek|kimi]${NC}" >&2
                     return 1
                     ;;
             esac
+            local seed_base_url=""
+            case "$seed_region" in
+                "global")
+                    seed_base_url="https://ark.ap-southeast.bytepluses.com/api/coding"
+                    ;;
+                "china")
+                    seed_base_url="https://ark.cn-beijing.volces.com/api/coding"
+                    ;;
+            esac
             echo "$prelude"
-            echo "export ANTHROPIC_BASE_URL='https://ark.cn-beijing.volces.com/api/coding'"
+            echo "export ANTHROPIC_BASE_URL='${seed_base_url}'"
             echo "if [ -f \"\$HOME/.ccm_config\" ]; then . \"\$HOME/.ccm_config\" >/dev/null 2>&1; fi"
             echo "export ANTHROPIC_AUTH_TOKEN=\"\${ARK_API_KEY}\""
             echo "export ANTHROPIC_MODEL='${seed_model}'"
@@ -2351,7 +2390,7 @@ main() {
             emit_env_exports minimax "${2:-}"
             ;;
         "seed"|"doubao")
-            emit_env_exports seed "${2:-}"
+            emit_env_exports seed "${2:-}" "${3:-}"
             ;;
         "glm"|"glm5")
             emit_env_exports glm "${2:-}"

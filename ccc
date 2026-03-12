@@ -11,13 +11,16 @@ CCM="${CCM_CMD:-$CCM_CMD_DEFAULT}"
 
 usage() {
     cat <<EOF
-Usage: ./ccc <model> [region|variant] [claude-options]
+Usage: ./ccc <model> [region] [variant] [claude-options]
        ./ccc open <provider> [claude-options]
        ./ccc <account> [claude-options]        # Switch account then launch (default model)
        ./ccc <model>:<account> [claude-options]
 
 Examples:
   ./ccc deepseek                     # Launch Claude Code with DeepSeek
+  ./ccc kimi china                   # Launch with Kimi (china region)
+  ./ccc seed global                  # Launch with Seed (global region)
+  ./ccc seed global kimi             # Launch with Seed (global, kimi variant)
   ./ccc open kimi                    # Launch with OpenRouter (kimi)
   ./ccc kimi --dangerously-skip-permissions  # Pass options to Claude Code
   ./ccc woohelps                     # Switch to 'woohelps' account and launch
@@ -100,6 +103,12 @@ else
                 fi
                 ;;
             seed|doubao)
+                # First check for region (global/china)
+                if [[ "${1:-}" =~ ^(global|china|cn|g|intl)$ ]]; then
+                    region_arg="$1"
+                    shift || true
+                fi
+                # Then check for variant
                 if [[ "${1:-}" =~ ^(doubao|glm|glm4|glm4.7|deepseek|ds|kimi|kimi2)$ ]]; then
                     seed_variant="$1"
                     shift || true
@@ -107,8 +116,10 @@ else
                 ;;
         esac
 
-        if [[ -n "$seed_variant" ]]; then
-            eval "$("$CCM" "$model" "$seed_variant")"
+        if [[ -n "$seed_variant" && -n "$region_arg" ]]; then
+            eval "$("$CCM" "$model" "$region_arg" "$seed_variant")"
+        elif [[ -n "$seed_variant" ]]; then
+            eval "$("$CCM" "$model" "china" "$seed_variant")"
         elif [[ -n "$region_arg" ]]; then
             eval "$("$CCM" "$model" "$region_arg")"
         else
